@@ -1,0 +1,826 @@
+openapi: 3.1.0
+info:
+  title: Smart Campus — Camera Stream to AI Vision API
+  version: 1.0.0
+  description: |
+    Hợp đồng API Lab 02 cho cặp Pair 01 — Camera Stream (B2) gọi AI Vision (B4).
+    Camera Stream gửi metadata frame bằng JSON khi phát hiện motion; AI Vision trả kết quả detect
+    gồm detectionId, objects, confidence và riskLevel để Consumer chuyển tiếp khi có bất thường.
+  contact:
+    name: Thuyet Nguyen Van / FIT4110 Lab 02
+    email: fit4110@example.edu.vn
+servers:
+  - url: http://localhost:4010
+    description: Prism mock server
+  - url: https://api.smart-campus.local
+    description: Smart Campus integration placeholder
+tags:
+  - name: health
+    description: Kiểm tra trạng thái service AI Vision
+  - name: vision
+    description: Phân tích frame và truy vấn kết quả detection
+  - name: models
+    description: Thông tin model AI Vision hiện hành
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Kiểm tra AI Vision service
+      description: Endpoint public để kiểm tra service AI Vision còn hoạt động.
+      tags: [health]
+      security: []
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+              examples:
+                ok:
+                  value:
+                    status: ok
+                    service: ai-vision
+                    time: '2026-05-19T03:30:00Z'
+
+  /vision/detect:
+    post:
+      operationId: createVisionDetection
+      summary: Gửi frame để AI Vision detect
+      description: |
+        Camera Stream gọi endpoint này khi phát hiện motion. Contract v1.0 thống nhất gửi
+        `imageUrl` trong JSON body thay vì multipart upload để dễ validate, mock và tạo evidence.
+        Provider ưu tiên trả kết quả đồng bộ; nếu model chưa xử lý xong có thể trả `status = processing`.
+      tags: [vision]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectionRequest'
+            examples:
+              motionDetected:
+                value:
+                  cameraId: CAM-B2-001
+                  correlationId: corr-20260519-0001
+                  capturedAt: '2026-05-19T03:30:00Z'
+                  imageUrl: https://storage.smart-campus.local/frames/cam-b2-001/20260519T033000Z.jpg
+                  motionScore: 0.87
+                  priority: high
+                  location:
+                    building: B
+                    floor: '04'
+                    zone: north-gate
+                  metadata:
+                    frameWidth: 1920
+                    frameHeight: 1080
+      responses:
+        '200':
+          description: Detection đã được xử lý hoặc đang xử lý
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionResult'
+              examples:
+                completed:
+                  value:
+                    detectionId: det-20260519-0001
+                    correlationId: corr-20260519-0001
+                    status: completed
+                    riskLevel: high
+                    confidence: 0.94
+                    objects:
+                      - objectType: person
+                        label: person
+                        confidence: 0.92
+                        bbox:
+                          x: 120
+                          y: 80
+                          width: 240
+                          height: 420
+                        trackingId: track-001
+                        attributes:
+                          color: dark
+                      - objectType: vehicle
+                        label: motorbike
+                        confidence: 0.81
+                        bbox:
+                          x: 600
+                          y: 250
+                          width: 360
+                          height: 260
+                        trackingId: null
+                        attributes: {}
+                    createdAt: '2026-05-19T03:30:01Z'
+                    completedAt: '2026-05-19T03:30:02Z'
+                    message: Phát hiện người di chuyển tại khu vực cổng bắc
+                processing:
+                  value:
+                    detectionId: det-20260519-0002
+                    correlationId: corr-20260519-0002
+                    status: processing
+                    riskLevel: low
+                    confidence: 0
+                    objects: []
+                    createdAt: '2026-05-19T03:31:00Z'
+                    completedAt: null
+                    message: Detection đang được xử lý
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /vision/detections/{detectionId}:
+    get:
+      operationId: getVisionDetectionById
+      summary: Lấy kết quả detection theo ID
+      description: Consumer dùng endpoint này để lấy lại kết quả hoặc polling khi `POST /vision/detect` trả `status = processing`.
+      tags: [vision]
+      parameters:
+        - $ref: '#/components/parameters/DetectionId'
+      responses:
+        '200':
+          description: Chi tiết detection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionResult'
+              examples:
+                found:
+                  value:
+                    detectionId: det-20260519-0001
+                    correlationId: corr-20260519-0001
+                    status: completed
+                    riskLevel: high
+                    confidence: 0.94
+                    objects:
+                      - objectType: person
+                        label: person
+                        confidence: 0.92
+                        bbox:
+                          x: 120
+                          y: 80
+                          width: 240
+                          height: 420
+                        trackingId: track-001
+                        attributes:
+                          color: dark
+                    createdAt: '2026-05-19T03:30:01Z'
+                    completedAt: '2026-05-19T03:30:02Z'
+                    message: Phát hiện người di chuyển tại khu vực cổng bắc
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /vision/models/info:
+    get:
+      operationId: getVisionModelInfo
+      summary: Lấy thông tin model AI Vision
+      description: Trả thông tin model hiện hành, trạng thái readiness và danh sách object type được hỗ trợ.
+      tags: [models]
+      responses:
+        '200':
+          description: Thông tin model hiện hành
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VisionModelInfo'
+              examples:
+                ready:
+                  value:
+                    modelId: vision-b4-yolo-campus-v1
+                    modelName: Campus YOLO Detector
+                    version: 1.0.0
+                    status: ready
+                    supportedObjectTypes: [person, vehicle, bag, unknown_object]
+                    updatedAt: '2026-05-19T02:00:00Z'
+                    notes: Model phục vụ phát hiện motion frame tại Smart Campus
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    DetectionId:
+      name: detectionId
+      in: path
+      required: true
+      description: Mã detection do AI Vision sinh ra.
+      schema:
+        type: string
+        pattern: '^det-[0-9]{8}-[0-9]{4}$'
+        example: det-20260519-0001
+
+  schemas:
+    HealthStatus:
+      type: object
+      additionalProperties: false
+      required: [status, service, time]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          description: Trạng thái health của service.
+          example: ok
+        service:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Tên service.
+          example: ai-vision
+        time:
+          type: string
+          format: date-time
+          description: Thời điểm health check.
+          example: '2026-05-19T03:30:00Z'
+
+    DetectionRequest:
+      type: object
+      additionalProperties: false
+      required: [cameraId, correlationId, capturedAt, imageUrl, motionScore]
+      properties:
+        cameraId:
+          type: string
+          minLength: 3
+          maxLength: 40
+          pattern: '^CAM-[A-Z0-9]+-[0-9]{3}$'
+          description: Mã camera gửi frame.
+          example: CAM-B2-001
+        correlationId:
+          type: string
+          minLength: 8
+          maxLength: 80
+          pattern: '^[A-Za-z0-9._:-]+$'
+          description: ID truy vết/idempotency cho motion event; giữ nguyên khi retry.
+          example: corr-20260519-0001
+        capturedAt:
+          type: string
+          format: date-time
+          description: Thời điểm camera ghi nhận frame.
+          example: '2026-05-19T03:30:00Z'
+        imageUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: URL ảnh/frame đã được Camera Stream lưu trước khi gọi AI Vision.
+          example: https://storage.smart-campus.local/frames/cam-b2-001/20260519T033000Z.jpg
+        motionScore:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Điểm motion do Camera Stream tính toán trước khi gửi.
+          example: 0.87
+        priority:
+          $ref: '#/components/schemas/DetectionPriority'
+        location:
+          $ref: '#/components/schemas/CameraLocation'
+        metadata:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+          description: Metadata bổ sung của frame, ví dụ kích thước hoặc codec.
+          example:
+            frameWidth: 1920
+            frameHeight: 1080
+
+    DetectionResult:
+      type: object
+      additionalProperties: false
+      required: [detectionId, correlationId, status, riskLevel, confidence, objects, createdAt, completedAt]
+      properties:
+        detectionId:
+          type: string
+          pattern: '^det-[0-9]{8}-[0-9]{4}$'
+          description: Mã detection do AI Vision sinh ra.
+          example: det-20260519-0001
+        correlationId:
+          type: string
+          minLength: 8
+          maxLength: 80
+          description: ID truy vết từ request gốc.
+          example: corr-20260519-0001
+        status:
+          $ref: '#/components/schemas/DetectionStatus'
+        riskLevel:
+          $ref: '#/components/schemas/RiskLevel'
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Độ tin cậy tổng thể của kết quả detect.
+          example: 0.94
+        objects:
+          type: array
+          minItems: 0
+          maxItems: 100
+          description: Danh sách object AI Vision phát hiện.
+          items:
+            $ref: '#/components/schemas/DetectedObject'
+        createdAt:
+          type: string
+          format: date-time
+          description: Thời điểm Provider ghi nhận detection.
+          example: '2026-05-19T03:30:01Z'
+        completedAt:
+          type: [string, 'null']
+          format: date-time
+          description: Thời điểm xử lý xong, null nếu đang processing hoặc failed sớm.
+          example: '2026-05-19T03:30:02Z'
+        message:
+          type: [string, 'null']
+          maxLength: 300
+          description: Ghi chú ngắn cho Consumer.
+          example: Phát hiện người di chuyển tại khu vực cổng bắc
+
+    DetectedObject:
+      oneOf:
+        - $ref: '#/components/schemas/DetectedPerson'
+        - $ref: '#/components/schemas/DetectedVehicle'
+        - $ref: '#/components/schemas/DetectedBag'
+        - $ref: '#/components/schemas/DetectedUnknownObject'
+      discriminator:
+        propertyName: objectType
+        mapping:
+          person: '#/components/schemas/DetectedPerson'
+          vehicle: '#/components/schemas/DetectedVehicle'
+          bag: '#/components/schemas/DetectedBag'
+          unknown_object: '#/components/schemas/DetectedUnknownObject'
+
+    DetectedPerson:
+      type: object
+      additionalProperties: false
+      required: [objectType, label, confidence, bbox, trackingId, attributes]
+      properties:
+        objectType:
+          type: string
+          const: person
+          description: Kiểu object dùng làm discriminator.
+          example: person
+        label:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Nhãn người do model trả về.
+          example: person
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Độ tin cậy của object.
+          example: 0.92
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        trackingId:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: ID tracking nếu model có theo dõi liên frame; null nếu không có.
+          example: track-001
+        attributes:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+          description: Thuộc tính bổ sung của người được phát hiện.
+          example:
+            color: dark
+
+    DetectedVehicle:
+      type: object
+      additionalProperties: false
+      required: [objectType, label, confidence, bbox, trackingId, attributes]
+      properties:
+        objectType:
+          type: string
+          const: vehicle
+          description: Kiểu object dùng làm discriminator.
+          example: vehicle
+        label:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Nhãn phương tiện do model trả về.
+          example: motorbike
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Độ tin cậy của object.
+          example: 0.81
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        trackingId:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: ID tracking nếu model có theo dõi liên frame; null nếu không có.
+          example: null
+        attributes:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+          description: Thuộc tính bổ sung của phương tiện được phát hiện.
+          example: {}
+
+    DetectedBag:
+      type: object
+      additionalProperties: false
+      required: [objectType, label, confidence, bbox, trackingId, attributes]
+      properties:
+        objectType:
+          type: string
+          const: bag
+          description: Kiểu object dùng làm discriminator.
+          example: bag
+        label:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Nhãn túi/vật mang theo do model trả về.
+          example: backpack
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Độ tin cậy của object.
+          example: 0.77
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        trackingId:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: ID tracking nếu model có theo dõi liên frame; null nếu không có.
+          example: null
+        attributes:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+          description: Thuộc tính bổ sung của túi/vật mang theo.
+          example: {}
+
+    DetectedUnknownObject:
+      type: object
+      additionalProperties: false
+      required: [objectType, label, confidence, bbox, trackingId, attributes]
+      properties:
+        objectType:
+          type: string
+          const: unknown_object
+          description: Kiểu object dùng làm discriminator.
+          example: unknown_object
+        label:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Nhãn object chưa xác định.
+          example: unknown_object
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Độ tin cậy của object.
+          example: 0.66
+        bbox:
+          $ref: '#/components/schemas/BoundingBox'
+        trackingId:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 80
+          description: ID tracking nếu model có theo dõi liên frame; null nếu không có.
+          example: null
+        attributes:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+          description: Thuộc tính bổ sung của object chưa xác định.
+          example: {}
+
+    BoundingBox:
+      type: object
+      additionalProperties: false
+      required: [x, y, width, height]
+      properties:
+        x:
+          type: integer
+          minimum: 0
+          description: Tọa độ x góc trái trên của bounding box.
+          example: 120
+        y:
+          type: integer
+          minimum: 0
+          description: Tọa độ y góc trái trên của bounding box.
+          example: 80
+        width:
+          type: integer
+          minimum: 1
+          description: Chiều rộng bounding box theo pixel.
+          example: 240
+        height:
+          type: integer
+          minimum: 1
+          description: Chiều cao bounding box theo pixel.
+          example: 420
+
+    VisionModelInfo:
+      type: object
+      additionalProperties: false
+      required: [modelId, modelName, version, status, supportedObjectTypes, updatedAt, notes]
+      properties:
+        modelId:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Mã model đang được AI Vision sử dụng.
+          example: vision-b4-yolo-campus-v1
+        modelName:
+          type: string
+          minLength: 3
+          maxLength: 100
+          description: Tên model.
+          example: Campus YOLO Detector
+        version:
+          type: string
+          pattern: '^[0-9]+\.[0-9]+\.[0-9]+$'
+          description: Phiên bản semantic version của model.
+          example: 1.0.0
+        status:
+          type: string
+          enum: [ready, warming_up, unavailable]
+          description: Trạng thái readiness của model, tách biệt với `/health`.
+          example: ready
+        supportedObjectTypes:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/ObjectType'
+          description: Các object type model có thể phát hiện.
+          example: [person, vehicle, bag, unknown_object]
+        updatedAt:
+          type: [string, 'null']
+          format: date-time
+          description: Thời điểm model được cập nhật gần nhất, null nếu chưa có thông tin.
+          example: '2026-05-19T02:00:00Z'
+        notes:
+          type: [string, 'null']
+          maxLength: 300
+          description: Ghi chú về model hiện hành.
+          example: Model phục vụ phát hiện motion frame tại Smart Campus
+
+    CameraLocation:
+      type: object
+      additionalProperties: false
+      required: [building, floor, zone]
+      properties:
+        building:
+          type: string
+          minLength: 1
+          maxLength: 20
+          description: Tòa nhà hoặc khu vực camera đặt.
+          example: B
+        floor:
+          type: string
+          minLength: 1
+          maxLength: 10
+          description: Tầng hoặc level.
+          example: '04'
+        zone:
+          type: string
+          minLength: 2
+          maxLength: 80
+          pattern: '^[a-z0-9-]+$'
+          description: Zone logic của camera.
+          example: north-gate
+
+    DetectionPriority:
+      type: string
+      enum: [low, normal, high]
+      default: normal
+      description: Mức ưu tiên xử lý detection request.
+      example: high
+
+    DetectionStatus:
+      type: string
+      enum: [queued, processing, completed, failed]
+      description: Trạng thái xử lý detection.
+      example: completed
+
+    RiskLevel:
+      type: string
+      enum: [low, medium, high, critical]
+      description: Mức độ rủi ro tổng thể của detection.
+      example: high
+
+    ObjectType:
+      type: string
+      enum: [person, vehicle, bag, unknown_object]
+      description: Kiểu object AI Vision hỗ trợ.
+      example: person
+
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI định danh loại lỗi.
+          example: https://smart-campus.local/errors/validation
+        title:
+          type: string
+          minLength: 3
+          maxLength: 120
+          description: Tiêu đề lỗi ngắn gọn.
+          example: Dữ liệu không hợp lệ
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+          example: 400
+        detail:
+          type: [string, 'null']
+          maxLength: 500
+          description: Mô tả chi tiết lỗi.
+          example: Field imageUrl phải là URI hợp lệ
+        instance:
+          type: [string, 'null']
+          format: uri-reference
+          description: URI/path của request gây lỗi.
+          example: /vision/detect
+        errors:
+          type: array
+          minItems: 0
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ProblemError'
+
+    ProblemError:
+      type: object
+      additionalProperties: false
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Field gây lỗi.
+          example: imageUrl
+        code:
+          type: string
+          minLength: 2
+          maxLength: 80
+          description: Mã lỗi máy đọc được.
+          example: INVALID_URI
+        message:
+          type: string
+          minLength: 3
+          maxLength: 200
+          description: Mô tả lỗi cho người đọc.
+          example: imageUrl phải là URI hợp lệ
+
+  responses:
+    BadRequest:
+      description: Dữ liệu sai định dạng hoặc thiếu field bắt buộc
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/validation
+            title: Dữ liệu không hợp lệ
+            status: 400
+            detail: Payload không đúng JSON Schema
+            instance: /vision/detect
+            errors:
+              - field: imageUrl
+                code: INVALID_URI
+                message: imageUrl phải là URI hợp lệ
+
+    Unauthorized:
+      description: Thiếu hoặc sai thông tin xác thực
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/unauthorized
+            title: Chưa xác thực
+            status: 401
+            detail: Thiếu hoặc sai Bearer token
+            instance: /vision/detect
+            errors: []
+
+    NotFound:
+      description: Không tìm thấy resource
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/not-found
+            title: Không tìm thấy detection
+            status: 404
+            detail: detectionId không tồn tại
+            instance: /vision/detections/det-20260519-9999
+            errors: []
+
+    Conflict:
+      description: Xung đột nghiệp vụ hoặc trùng correlationId với payload khác
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/conflict
+            title: Correlation ID bị trùng
+            status: 409
+            detail: correlationId đã được xử lý với payload khác
+            instance: /vision/detect
+            errors:
+              - field: correlationId
+                code: IDEMPOTENCY_CONFLICT
+                message: correlationId không được tái sử dụng cho payload khác
+
+    UnprocessableEntity:
+      description: Payload đúng JSON nhưng vi phạm rule nghiệp vụ
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/business-rule
+            title: Không thể xử lý frame
+            status: 422
+            detail: Ảnh vượt quá giới hạn 5MB hoặc cameraId không hợp lệ
+            instance: /vision/detect
+            errors:
+              - field: cameraId
+                code: UNKNOWN_CAMERA
+                message: cameraId không thuộc danh sách camera được tích hợp
+
+    InternalServerError:
+      description: Lỗi không mong muốn phía server
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/internal
+            title: Lỗi hệ thống
+            status: 500
+            detail: AI Vision gặp lỗi không mong muốn
+            instance: /vision/detect
+            errors: []
+
+    ServiceUnavailable:
+      description: AI Vision hoặc model tạm thời không sẵn sàng
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            type: https://smart-campus.local/errors/service-unavailable
+            title: AI Vision tạm thời quá tải
+            status: 503
+            detail: Model đang warming up hoặc request detect bị timeout, Consumer nên retry có backoff
+            instance: /vision/detect
+            errors: []

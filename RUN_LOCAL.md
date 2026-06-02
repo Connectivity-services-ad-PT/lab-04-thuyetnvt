@@ -1,88 +1,67 @@
-# RUN_LOCAL.md – Hướng dẫn chạy Lab 04
+# RUN_LOCAL.md - Lab 04 AI Vision
 
-Tài liệu này giúp người khác clone repo sạch và chạy lại service trong Docker.
+This repo packages the Pair 01 AI Vision provider service in Docker and verifies it with the Lab 03 Postman/Newman tests.
 
----
-
-## 1. Clone repo
-
-```bash
-git clone <repo-url>
-cd FIT4110_lab04_docker_packaging
-```
-
----
-
-## 2. Cài dependencies cho Newman/Prism/Spectral
+## 1. Install Node dependencies
 
 ```bash
 npm install
 ```
 
----
-
-## 3. Build Docker image
+## 2. Build Docker image
 
 ```bash
-docker build -t fit4110/iot-ingestion:lab04 .
+docker build -t fit4110/ai-vision:lab04 .
 ```
 
----
-
-## 4. Run container
+## 3. Run container
 
 ```bash
 docker run --rm \
-  --name fit4110-iot-lab04 \
+  --name fit4110-ai-vision-lab04 \
   -p 8000:8000 \
   --env-file .env.example \
-  fit4110/iot-ingestion:lab04
+  fit4110/ai-vision:lab04
 ```
 
-Mở terminal khác, kiểm tra:
+Expected health response:
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-Kết quả mong đợi:
-
 ```json
 {
   "status": "ok",
-  "service": "iot-ingestion",
-  "version": "0.4.0"
+  "service": "ai-vision",
+  "time": "2026-06-02T00:00:00Z"
 }
 ```
 
----
+## 4. Run Newman against the container
 
-## 5. Chạy Newman test trên container
+Open another terminal while the container is running:
 
 ```bash
 npm run test:local
 ```
 
-Report sinh tại:
+Reports are generated at:
 
 ```text
 reports/newman-lab04-local.xml
 reports/newman-lab04-local.html
 ```
 
----
+## 5. Stop container
 
-## 6. Dừng container
-
-Nếu không dùng `--rm` hoặc container còn chạy:
+If the container is running in detached mode:
 
 ```bash
-docker stop fit4110-iot-lab04
+docker stop fit4110-ai-vision-lab04
 ```
 
----
-
-## 7. Lệnh nhanh
+## Quick commands
 
 ```bash
 make build

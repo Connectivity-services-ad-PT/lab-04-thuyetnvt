@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="FIT4110 Lab04 - Dockerized AI Vision Contract Tests" tests="16" time="0.106">
+  <testsuite name="00_Health / GET /health - AI Vision is alive" id="f4540159-364e-47a9-8a90-fca3977fe8e0" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.027">
+    <testcase name="Status code is 200" time="0.027" classname="00HealthGetHealthAiVisionIsAlive"/>
+    <testcase name="Health response identifies AI Vision" time="0.027" classname="00HealthGetHealthAiVisionIsAlive"/>
+  </testsuite>
+  <testsuite name="01_Functional / POST /vision/detect - completed detection happy path" id="a6277169-c745-495c-97b3-97687bbc194d" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.011">
+    <testcase name="Status code is 200" time="0.011" classname="01FunctionalPostVisionDetectCompletedDetectionHappyPath"/>
+    <testcase name="Detection response has required fields" time="0.011" classname="01FunctionalPostVisionDetectCompletedDetectionHappyPath"/>
+  </testsuite>
+  <testsuite name="01_Functional / GET /vision/detections/{detectionId} - polling result" id="74f00ffe-3f71-4d0b-a111-88842556b0ea" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.005">
+    <testcase name="Status code is 200" time="0.005" classname="01FunctionalGetVisionDetectionsDetectionIdPollingResult"/>
+    <testcase name="Polling returns a detection result" time="0.005" classname="01FunctionalGetVisionDetectionsDetectionIdPollingResult"/>
+  </testsuite>
+  <testsuite name="01_Functional / GET /vision/models/info - model readiness" id="052203c2-be2f-4722-bbed-24d4abc03a3f" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.004">
+    <testcase name="Status code is 200" time="0.004" classname="01FunctionalGetVisionModelsInfoModelReadiness"/>
+    <testcase name="Model info exposes readiness state" time="0.004" classname="01FunctionalGetVisionModelsInfoModelReadiness"/>
+  </testsuite>
+  <testsuite name="02_Auth / GET /vision/models/info - valid token is accepted" id="b5056035-c737-4e1b-bd00-0b003b00ec3d" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.004">
+    <testcase name="Valid token request returns success" time="0.004" classname="02AuthGetVisionModelsInfoValidTokenIsAccepted"/>
+  </testsuite>
+  <testsuite name="02_Auth / POST /vision/detect - missing token is rejected on real service" id="682ab81c-25e5-4bd8-933a-945dfa7a08ba" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.004">
+    <testcase name="Missing token returns 401 or 403" time="0.004" classname="02AuthPostVisionDetectMissingTokenIsRejectedOnRealService"/>
+  </testsuite>
+  <testsuite name="02_Auth / POST /vision/detect - invalid token is rejected on real service" id="9658f0e7-92d3-4452-a2a5-61e651b05c42" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.004">
+    <testcase name="Invalid token returns 401 or 403" time="0.004" classname="02AuthPostVisionDetectInvalidTokenIsRejectedOnRealService"/>
+  </testsuite>
+  <testsuite name="03_Negative / POST /vision/detect - missing imageUrl returns validation error" id="ebec8671-b30d-45cf-b368-ac0ca591196b" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.005">
+    <testcase name="Invalid payload returns client error" time="0.005" classname="03NegativePostVisionDetectMissingImageUrlReturnsValidationError"/>
+    <testcase name="Error response follows Problem Details" time="0.005" classname="03NegativePostVisionDetectMissingImageUrlReturnsValidationError"/>
+  </testsuite>
+  <testsuite name="03_Negative / POST /vision/detect - duplicate correlationId conflict" id="c00f6e56-6c17-4290-8691-03fd682868a2" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.005">
+    <testcase name="Duplicate correlationId with different payload returns 409" time="0.005" classname="03NegativePostVisionDetectDuplicateCorrelationIdConflict"/>
+    <testcase name="Conflict explains idempotency problem" time="0.005" classname="03NegativePostVisionDetectDuplicateCorrelationIdConflict"/>
+  </testsuite>
+  <testsuite name="03_Negative / GET /vision/detections/{detectionId} - unknown detection returns 404" id="5e2bee28-ca9d-4d79-99b3-ddeeae5c5463" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.005">
+    <testcase name="Unknown detection returns 404" time="0.005" classname="03NegativeGetVisionDetectionsDetectionIdUnknownDetectionReturns404"/>
+    <testcase name="NotFound response follows Problem Details" time="0.005" classname="03NegativeGetVisionDetectionsDetectionIdUnknownDetectionReturns404"/>
+  </testsuite>
+  <testsuite name="04_Boundary_Reliability / POST /vision/detect - motionScore minimum 0 is accepted" id="33c3f5ac-1093-45cc-9ddd-b9c1591023a7" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.005">
+    <testcase name="motionScore 0 is inside contract range" time="0.005" classname="04BoundaryReliabilityPostVisionDetectMotionScoreMinimum0IsAccepted"/>
+  </testsuite>
+  <testsuite name="04_Boundary_Reliability / POST /vision/detect - motionScore maximum 1 is accepted" id="cba5bca0-f457-4e62-ac95-7e9c3e6c3971" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.004">
+    <testcase name="motionScore 1 is inside contract range" time="0.004" classname="04BoundaryReliabilityPostVisionDetectMotionScoreMaximum1IsAccepted"/>
+  </testsuite>
+  <testsuite name="04_Boundary_Reliability / POST /vision/detect - motionScore above 1 is rejected" id="aaed6467-1f35-4ca4-b79c-9c644189caaf" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.004">
+    <testcase name="motionScore above max returns client error" time="0.004" classname="04BoundaryReliabilityPostVisionDetectMotionScoreAbove1IsRejected"/>
+    <testcase name="Boundary test checks server response" time="0.004" classname="04BoundaryReliabilityPostVisionDetectMotionScoreAbove1IsRejected"/>
+  </testsuite>
+  <testsuite name="05_Consumer_side_Smoke / Camera Stream smoke - call AI Vision mock" id="56333a10-0ed0-4fc7-ad91-15213ae69b9c" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.010">
+    <testcase name="Camera consumer receives success from AI Vision mock" time="0.010" classname="05ConsumerSideSmokeCameraStreamSmokeCallAiVisionMock"/>
+    <testcase name="Camera consumer can parse fields needed for downstream flow" time="0.010" classname="05ConsumerSideSmokeCameraStreamSmokeCallAiVisionMock"/>
+  </testsuite>
+  <testsuite name="05_Consumer_side_Smoke / Camera Stream smoke - AI Vision unavailable error is understood" id="778d6ed0-e64d-43c8-af67-cd60ff6401aa" timestamp="2026-06-02T03:39:01.496Z" tests="2" failures="0" errors="0" time="0.004">
+    <testcase name="AI Vision unavailable returns 503" time="0.004" classname="05ConsumerSideSmokeCameraStreamSmokeAiVisionUnavailableErrorIsUnderstood"/>
+    <testcase name="Consumer sees retry/backoff guidance in Problem Details" time="0.004" classname="05ConsumerSideSmokeCameraStreamSmokeAiVisionUnavailableErrorIsUnderstood"/>
+  </testsuite>
+  <testsuite name="06_Local_only_NonFunctional / POST /vision/detect - local response time threshold" id="a2185b32-2be0-478a-92e2-188f2e96600e" timestamp="2026-06-02T03:39:01.496Z" tests="1" failures="0" errors="0" time="0.005">
+    <testcase name="Local AI Vision responds under 1000ms" time="0.005" classname="06LocalOnlyNonFunctionalPostVisionDetectLocalResponseTimeThreshold"/>
+  </testsuite>
+</testsuites>
